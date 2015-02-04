@@ -13,6 +13,7 @@ from kivy.properties import \
     ReferenceListProperty
 from kivy.graphics import Triangle, Rectangle, Ellipse
 from kivy.vector import Vector
+from kivy.clock import Clock
 from random import randint
 
 
@@ -50,6 +51,12 @@ class Playground(Widget):
         # will make sure that nothing bad happens anyway
         self.snake.remove()
         self.fruit.remove()
+
+        # unschedule all events (they will be properly rescheduled by the
+        # restart mechanism)
+        Clock.unschedule(self.pop_fruit)
+        Clock.unschedule(self.fruit.remove)
+        Clock.unschedule(self.update)
 
     def new_snake(self):
         # generate random coordinates
@@ -105,6 +112,16 @@ class Playground(Widget):
         """
         Used to make the game progress to a new turn.
         """
+        # registering the fruit poping sequence in the event scheduler
+        if self.turn_counter == 0:
+            self.fruit_rythme = self.fruit.interval + self.fruit.duration
+            Clock.schedule_interval(
+                self.fruit.remove, self.fruit_rythme)
+        elif self.turn_counter == self.fruit.interval:
+            self.pop_fruit()
+            Clock.schedule_interval(
+                self.pop_fruit, self.fruit_rythme)
+
         # move snake to its next position
         self.snake.move()
 
@@ -125,6 +142,9 @@ class Playground(Widget):
 
         # increment turn counter
         self.turn_counter += 1
+
+        # schedule next update event in one turn (1'')
+        Clock.schedule_once(self.update, 1)
 
     def on_touch_down(self, touch):
         self.touch_start_pos = touch.spos
@@ -396,6 +416,9 @@ class SnakeTail(Widget):
 
 class SnakeApp(App):
     game_engine = ObjectProperty(None)
+
+    def on_start(self):
+        self.game_engine.start()
 
     def build(self):
         self.game_engine = Playground()

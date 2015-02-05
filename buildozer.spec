@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = Hello World
+title = Ouroboros
 
 # (str) Package name
-package.name = helloworldapp
+package.name = Ouroboros
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.helloworldapp
+package.domain = org.ouroboros
 
 # (str) Source code where the main.py live
 source.dir = .

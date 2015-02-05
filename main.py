@@ -14,6 +14,8 @@ from kivy.properties import \
 from kivy.graphics import Triangle, Rectangle, Ellipse
 from kivy.vector import Vector
 from kivy.clock import Clock
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.popup import Popup
 from random import randint
 
 
@@ -126,10 +128,11 @@ class Playground(Widget):
         self.snake.move()
 
         # check for defeat
-        # if it happens to be the case, reset and restart game
+        # if it happens to be the case, reset the game and switch back to
+        # the welcome screen
         if self.is_defeated():
             self.reset()
-            self.start()
+            SnakeApp.screen_manager.current = "welcome_screen"
             return
 
         # check if the fruit is being eaten
@@ -414,15 +417,43 @@ class SnakeTail(Widget):
                     self.canvas.remove(last_block)
 
 
-class SnakeApp(App):
+class WelcomeScreen(Screen):
+    options_popup = ObjectProperty(None)
+
+    def show_popup(self):
+        # instanciate the popup and display it
+        self.options_popup = OptionsPopup()
+        self.options_popup.open()
+
+
+class PlaygroundScreen(Screen):
     game_engine = ObjectProperty(None)
 
-    def on_start(self):
+    def on_enter(self):
+        # we screen comes into view, start the game
         self.game_engine.start()
 
+
+class OptionsPopup(Popup):
+    pass
+
+
+class SnakeApp(App):
+    screen_manager = ObjectProperty(None)
+
     def build(self):
-        self.game_engine = Playground()
-        return self.game_engine
+        # declare the ScreenManager as a class property
+        SnakeApp.screen_manager = ScreenManager()
+
+        # instanciate the screens
+        ws = WelcomeScreen(name="welcome_screen")
+        ps = PlaygroundScreen(name="playground_screen")
+
+        # register the screens in the screen manager
+        self.screen_manager.add_widget(ws)
+        self.screen_manager.add_widget(ps)
+
+        return self.screen_manager
 
 if __name__ == '__main__':
     SnakeApp().run()

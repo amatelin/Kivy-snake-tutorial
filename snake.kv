@@ -20,6 +20,7 @@
         top: root.top - root.height/root.row_number
         text: str(root.score)
 
+
 <Snake>
     head: snake_head_id
     tail: snake_tail_id
@@ -33,3 +34,72 @@
         id: snake_tail_id
         width: root.width
         height: root.height
+
+
+<WelcomeScreen>
+    AnchorLayout:
+        anchor_x: "center"
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: (0.5, 1)
+            spacing: 10
+
+            Label:
+                size_hint_y: .4
+                text: "Ouroboros"
+                valign: "bottom"
+                bold: True
+                font_size: 50
+                padding: 0, 0
+
+            AnchorLayout:
+                anchor_x: "center"
+                size_hint_y: .6
+
+                BoxLayout:
+                    size_hint: .5, .5
+                    orientation: "vertical"
+                    spacing: 10
+
+                    Button:
+                        halign: "center"
+                        valign: "middle"
+                        text: "Play"
+                        on_press: root.manager.current = "playground_screen"
+
+                    Button:
+                        halign: "center"
+                        valign: "middle"
+                        text: "Options"
+                        on_press: root.show_popup()
+
+
+<PlaygroundScreen>:
+    game_engine: playground_widget_id
+
+    Playground:
+        id: playground_widget_id
+
+
+<OptionsPopup>
+    title: "Options"
+    size_hint: .75, .75
+
+    BoxLayout:
+        orientation: "vertical"
+        spacing: 20
+
+        GridLayout:
+            size_hint_y: .8
+            cols: 2
+
+        AnchorLayout:
+            anchor_x: "center"
+            size_hint: 1, .25
+
+            Button:
+                size_hint_x: 0.5
+                text: "Save changes"
+                on_press: root.dismiss()
+

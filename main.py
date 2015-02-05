@@ -11,7 +11,7 @@ from kivy.properties import \
     BooleanProperty, \
     OptionProperty, \
     ReferenceListProperty
-from kivy.graphics import Triangle, Rectangle, Ellipse
+from kivy.graphics import Triangle, Rectangle, Ellipse, Line
 from kivy.vector import Vector
 from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -24,6 +24,10 @@ class Playground(Widget):
     fruit = ObjectProperty(None)
     snake = ObjectProperty(None)
 
+    # user options
+    start_speed = NumericProperty(1)
+    border_option = BooleanProperty(False)
+
     # grid parameters (chosent to respect the 16/9 format)
     col_number = 16
     row_number = 9
@@ -33,11 +37,28 @@ class Playground(Widget):
     turn_counter = NumericProperty(0)
     fruit_rhythm = NumericProperty(0)
 
+    start_time_coeff = NumericProperty(1)
+    running_time_coeff = NumericProperty(1)
+
     # user input handling
     touch_start_pos = ListProperty()
     action_triggered = BooleanProperty(False)
 
     def start(self):
+        # if border_option is active, draw rectangle around the game area
+        if self.border_option:
+            with self.canvas.before:
+                Line(width=3.,
+                     rectangle=(self.x, self.y, self.width, self.height))
+
+        # compute time coeff used as refresh rate for the game using the
+        # options provided (default 1.1, max 2)
+        # we store the value twice in order to keep a reference in case of
+        # reset (indeed the running_time_coeff will be incremented in game if
+        # a fruit is eaten)
+        self.start_time_coeff += (self.start_speed / 10)
+        self.running_time_coeff = self.start_time_coeff
+
         # draw new snake on board
         self.new_snake()
 
@@ -48,6 +69,7 @@ class Playground(Widget):
         # reset game variables
         self.turn_counter = 0
         self.score = 0
+        self.running_time_coeff = self.start_time_coeff
 
         # remove the snake widget and the fruit if need be; its remove method
         # will make sure that nothing bad happens anyway
@@ -101,14 +123,38 @@ class Playground(Widget):
         if snake_position in self.snake.tail.blocks_positions:
             return True
 
-        # if the snake it out of the board : defeat
-        if snake_position[0] > self.col_number \
-                or snake_position[0] < 1 \
-                or snake_position[1] > self.row_number \
-                or snake_position[1] < 1:
-            return True
+        # if the snake it out of the board and border option is on : defeat
+        if self.border_option:
+            if snake_position[0] > self.col_number \
+                    or snake_position[0] < 1 \
+                    or snake_position[1] > self.row_number \
+                    or snake_position[1] < 1:
+                return True
 
         return False
+
+    def handle_outbound(self):
+        """
+        Used to replace the snake on the opposite side if it goes outbound
+        (only called if the border option is set to False)
+        """
+        position = self.snake.get_position()
+        direction = self.snake.get_direction()
+
+        if position[0] == 1 and direction == "Left":
+            # add the current head position as a tail block
+            # otherwise one block would be missed by the normal routine
+            self.snake.tail.add_block(list(position))
+            self.snake.set_position([self.col_number + 1, position[1]])
+        elif position[0] == self.col_number and direction == "Right":
+            self.snake.tail.add_block(list(position))
+            self.snake.set_position([0, position[1]])
+        elif position[1] == 1 and direction == "Down":
+            self.snake.tail.add_block(list(position))
+            self.snake.set_position([position[0], self.row_number + 1])
+        elif position[1] == self.row_number and direction == "Up":
+            self.snake.tail.add_block(list(position))
+            self.snake.set_position([position[0], 0])
 
     def update(self, *args):
         """
@@ -118,11 +164,16 @@ class Playground(Widget):
         if self.turn_counter == 0:
             self.fruit_rythme = self.fruit.interval + self.fruit.duration
             Clock.schedule_interval(
-                self.fruit.remove, self.fruit_rythme)
+                self.fruit.remove, self.fruit_rythme / self.running_time_coeff)
         elif self.turn_counter == self.fruit.interval:
             self.pop_fruit()
             Clock.schedule_interval(
-                self.pop_fruit, self.fruit_rythme)
+                self.pop_fruit, self.fruit_rythme / self.running_time_coeff)
+
+        # if game with no borders, check if snake is about to leave the screen
+        # if so, replace to corresponding opposite border
+        if not self.border_option:
+            self.handle_outbound()
 
         # move snake to its next position
         self.snake.move()
@@ -137,17 +188,19 @@ class Playground(Widget):
 
         # check if the fruit is being eaten
         if self.fruit.is_on_board():
-            # if so, remove the fruit, increment score and tail size
+            # if so, remove the fruit, increment score, tail size and
+            # refresh rate by 5%
             if self.snake.get_position() == self.fruit.pos:
                 self.fruit.remove()
                 self.score += 1
                 self.snake.tail.size += 1
+                self.running_time_coeff *= 1.05
 
         # increment turn counter
         self.turn_counter += 1
 
-        # schedule next update event in one turn (1'')
-        Clock.schedule_once(self.update, 1)
+        # schedule next update event in one turn
+        Clock.schedule_once(self.update, 1 / self.running_time_coeff)
 
     def on_touch_down(self, touch):
         self.touch_start_pos = touch.spos
@@ -435,7 +488,12 @@ class PlaygroundScreen(Screen):
 
 
 class OptionsPopup(Popup):
-    pass
+    border_option_widget = ObjectProperty(None)
+    speed_option_widget = ObjectProperty(None)
+
+    def on_dismiss(self):
+        Playground.start_speed = self.speed_option_widget.value
+        Playground.border_option = self.border_option_widget.active
 
 
 class SnakeApp(App):

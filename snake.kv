@@ -83,6 +83,9 @@
 
 
 <OptionsPopup>
+    border_option_widget: border_option_widget_id
+    speed_option_widget: speed_option_widget_id
+    
     title: "Options"
     size_hint: .75, .75
 
@@ -93,6 +96,24 @@
         GridLayout:
             size_hint_y: .8
             cols: 2
+
+            Label:
+                text: "Borders"  
+                halign: "center"
+
+            Switch:
+                id: border_option_widget_id
+
+            Label: 
+                text: "Game speed"
+                halign: "center"
+
+            Slider:
+                id: speed_option_widget_id
+                max: 10
+                min: 1
+                step: 1
+                value: 1
 
         AnchorLayout:
             anchor_x: "center"
